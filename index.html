@@ -3,19 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>AI 3D Object Creator</title>
+<title>AI 3D Creator</title>
 <link rel="stylesheet" href="css/style.css">
-
-<!-- TensorFlow.js -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
-<!-- BodyPix / Universal Segmentation -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
-<!-- Three.js -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/STLExporter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/OBJExporter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/GLTFExporter.js"></script>
 </head>
 <body>
 
@@ -28,143 +19,217 @@
   </div>
 
   <div class="upload-container">
+
+    <!-- Лого -->
     <div class="app-logo">
-      <div class="logo-ring">
-        <svg viewBox="0 0 100 100" class="logo-svg">
+      <div class="logo-icon">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
           <defs>
             <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stop-color="#00f5ff"/>
               <stop offset="100%" stop-color="#7b2ff7"/>
             </linearGradient>
           </defs>
-          <polygon points="50,10 90,80 10,80" fill="none" stroke="url(#lg1)" stroke-width="4"/>
-          <polygon points="50,25 78,72 22,72" fill="rgba(0,245,255,0.1)" stroke="url(#lg1)" stroke-width="2"/>
-          <circle cx="50" cy="50" r="8" fill="url(#lg1)"/>
+          <polygon points="30,5 55,50 5,50" fill="none" stroke="url(#lg1)" stroke-width="3" stroke-linejoin="round"/>
+          <polygon points="30,18 45,45 15,45" fill="rgba(0,245,255,0.15)" stroke="url(#lg1)" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="30" cy="30" r="6" fill="url(#lg1)"/>
         </svg>
       </div>
     </div>
 
     <h1 class="app-title">AI <span class="grad">3D</span> Creator</h1>
-    <p class="app-sub">Загрузи фото — получи реальную 3D модель с текстурой</p>
+    <p class="app-sub">Сфотографируй или загрузи фото — получи 3D модель</p>
 
-    <!-- Зона загрузки -->
-    <div class="upload-zone" id="upload-zone">
-      <input type="file" id="file-input" accept="image/*" hidden>
-      <div class="upload-zone-inner" id="upload-trigger">
-        <div class="upload-icon-anim">
-          <div class="upload-circle">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <path d="M24 8L24 32" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
-              <path d="M14 18L24 8L34 18" stroke="#00f5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M8 36H40" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="upload-pulse"></div>
+    <!-- ДВЕ ГЛАВНЫЕ КНОПКИ -->
+    <div class="main-actions">
+
+      <!-- КАМЕРА -->
+      <button class="action-card camera-card" id="btn-open-camera">
+        <div class="ac-icon-wrap">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect x="3" y="9" width="30" height="21" rx="4" stroke="#00f5ff" stroke-width="2.5"/>
+            <circle cx="18" cy="19" r="6" stroke="#00f5ff" stroke-width="2.5"/>
+            <circle cx="18" cy="19" r="2.5" fill="#00f5ff"/>
+            <path d="M13 9L15 5H21L23 9" stroke="#00f5ff" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="28" cy="14" r="1.5" fill="#00f5ff"/>
+          </svg>
         </div>
-        <p class="upload-text">Нажмите или перетащите фото</p>
-        <p class="upload-hint">JPG, PNG, WEBP до 20МБ</p>
-      </div>
+        <span class="ac-title">Камера</span>
+        <span class="ac-sub">Сфотографировать</span>
+      </button>
+
+      <!-- ЗАГРУЗИТЬ -->
+      <button class="action-card upload-card" id="btn-open-upload">
+        <div class="ac-icon-wrap">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect x="3" y="3" width="30" height="30" rx="5" stroke="#7b2ff7" stroke-width="2.5"/>
+            <path d="M18 23V12" stroke="#7b2ff7" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M12 17L18 11L24 17" stroke="#7b2ff7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M10 27H26" stroke="#7b2ff7" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="ac-title">Галерея</span>
+        <span class="ac-sub">Загрузить фото</span>
+      </button>
+
     </div>
+
+    <!-- Скрытый input для файла -->
+    <input type="file" id="file-input" accept="image/*" style="display:none">
 
     <!-- Превью фото -->
-    <div class="photo-preview-container" id="photo-preview-container" style="display:none">
-      <div class="photo-preview-wrap">
-        <img id="photo-preview" src="" alt="Preview">
-        <div class="photo-overlay-info" id="photo-info"></div>
-        <button class="btn-change-photo" id="btn-change-photo">✕ Другое фото</button>
+    <div id="preview-section" style="display:none">
+      <div class="preview-wrap">
+        <img id="photo-preview" src="" alt="">
+        <button class="btn-close-preview" id="btn-clear-photo">✕</button>
+        <div class="preview-badge" id="preview-badge">Готово к обработке</div>
       </div>
-    </div>
 
-    <!-- Настройки AI -->
-    <div class="ai-settings" id="ai-settings" style="display:none">
-      <h3 class="settings-title">⚙️ Настройки AI</h3>
-      <div class="settings-row">
-        <div class="setting-card" id="quality-setting">
-          <span class="sc-icon">🎯</span>
-          <div class="sc-content">
-            <span class="sc-name">Качество</span>
-            <select id="quality-select" class="sc-select">
-              <option value="fast">Быстрое (30с)</option>
-              <option value="medium" selected>Среднее (1мин)</option>
-              <option value="high">Высокое (2мин)</option>
+      <!-- Настройки -->
+      <div class="settings-block">
+        <div class="sb-row">
+          <div class="sb-item">
+            <label>Качество</label>
+            <select id="quality-select">
+              <option value="fast">Быстрое</option>
+              <option value="medium" selected>Среднее</option>
+              <option value="high">Высокое</option>
             </select>
           </div>
-        </div>
-
-        <div class="setting-card">
-          <span class="sc-icon">📐</span>
-          <div class="sc-content">
-            <span class="sc-name">Тип объекта</span>
-            <select id="object-type" class="sc-select">
-              <option value="auto">Авто-определение</option>
-              <option value="organic">Органика (люди, животные)</option>
-              <option value="product">Продукт/предмет</option>
-              <option value="face">Лицо/голова</option>
-              <option value="architecture">Архитектура</option>
-            </select>
+          <div class="sb-item">
+            <label>Детализация</label>
+            <div class="slider-row">
+              <input type="range" id="detail-level" min="1" max="5" value="3">
+              <span id="detail-val">3</span>
+            </div>
           </div>
         </div>
-
-        <div class="setting-card">
-          <span class="sc-icon">🎨</span>
-          <div class="sc-content">
-            <span class="sc-name">Текстура</span>
-            <select id="texture-mode" class="sc-select">
-              <option value="photo">С фото (реальные цвета)</option>
+        <div class="sb-row">
+          <div class="sb-item">
+            <label>Текстура</label>
+            <select id="texture-mode">
+              <option value="photo">С фото</option>
               <option value="enhanced">Улучшенная</option>
-              <option value="smooth">Сглаженная</option>
+            </select>
+          </div>
+          <div class="sb-item">
+            <label>Тип объекта</label>
+            <select id="object-type">
+              <option value="auto">Авто</option>
+              <option value="product">Предмет</option>
+              <option value="organic">Органика</option>
             </select>
           </div>
         </div>
-
-        <div class="setting-card">
-          <span class="sc-icon">🔺</span>
-          <div class="sc-content">
-            <span class="sc-name">Детализация</span>
-            <input type="range" id="detail-level" min="1" max="5" value="3" class="sc-slider">
-            <span class="slider-val" id="detail-val">3</span>
-          </div>
+        <div class="sb-checks">
+          <label class="chk"><input type="checkbox" id="opt-smooth" checked><span class="chk-box"></span>Сглаживание</label>
+          <label class="chk"><input type="checkbox" id="opt-close-bottom" checked><span class="chk-box"></span>Закрыть дно</label>
+          <label class="chk"><input type="checkbox" id="opt-remove-bg" checked><span class="chk-box"></span>Убрать фон</label>
         </div>
       </div>
 
-      <!-- Дополнительные опции -->
-      <div class="extra-options">
-        <label class="checkbox-label">
-          <input type="checkbox" id="opt-smooth" checked>
-          <span class="cb-box"></span>
-          Сглаживание поверхности
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="opt-close-bottom" checked>
-          <span class="cb-box"></span>
-          Закрыть основание
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="opt-remove-bg" checked>
-          <span class="cb-box"></span>
-          Убрать фон автоматически
-        </label>
-      </div>
+      <button class="btn-create" id="btn-create">
+        <span>✨</span> Создать 3D модель <span>→</span>
+      </button>
     </div>
-
-    <!-- Кнопка создать -->
-    <button class="btn-create" id="btn-create" style="display:none">
-      <span class="btn-create-icon">✨</span>
-      <span>Создать 3D модель</span>
-      <span class="btn-create-arrow">→</span>
-    </button>
 
     <!-- Примеры -->
-    <div class="examples-section">
-      <p class="examples-label">Попробуйте с примером:</p>
-      <div class="examples-row">
-        <button class="example-btn" data-example="cup">☕ Чашка</button>
-        <button class="example-btn" data-example="bottle">🍾 Бутылка</button>
-        <button class="example-btn" data-example="toy">🧸 Игрушка</button>
-        <button class="example-btn" data-example="shoe">👟 Кроссовок</button>
+    <div class="examples-block" id="examples-block">
+      <p class="ex-label">Попробуй на примере:</p>
+      <div class="ex-row">
+        <button class="ex-btn" data-example="cup">☕ Чашка</button>
+        <button class="ex-btn" data-example="bottle">🍾 Бутылка</button>
+        <button class="ex-btn" data-example="toy">🧸 Игрушка</button>
+        <button class="ex-btn" data-example="shoe">👟 Кроссовок</button>
       </div>
     </div>
+
   </div>
+</div>
+
+<!-- ========== ЭКРАН КАМЕРЫ ========== -->
+<div id="screen-camera" class="screen">
+
+  <div class="cam-header">
+    <button class="cam-hbtn" id="btn-cam-close">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M17 5L5 17M5 5L17 17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <span class="cam-title">Сфотографировать</span>
+    <button class="cam-hbtn" id="btn-cam-flip">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M4 11C4 7.13 7.13 4 11 4C13.1 4 15 4.92 16.33 6.4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <path d="M18 11C18 14.87 14.87 18 11 18C8.9 18 7 17.08 5.67 15.6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 4L16.5 7.5L13 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 18L5.5 14.5L9 15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Видео -->
+  <div class="cam-viewport">
+    <video id="cam-video" autoplay playsinline muted></video>
+
+    <!-- Рамка наводки -->
+    <div class="cam-guide">
+      <div class="cg-corner tl"></div>
+      <div class="cg-corner tr"></div>
+      <div class="cg-corner bl"></div>
+      <div class="cg-corner br"></div>
+      <div class="cg-hint">Поместите объект в кадр</div>
+    </div>
+
+    <!-- Статус -->
+    <div class="cam-status" id="cam-status">
+      <div class="cs-dot"></div>
+      <span id="cam-status-text">Инициализация...</span>
+    </div>
+
+    <!-- Таймер -->
+    <div class="cam-timer" id="cam-timer" style="display:none">
+      <span id="cam-timer-num">3</span>
+    </div>
+  </div>
+
+  <!-- Контролы -->
+  <div class="cam-controls">
+
+    <!-- Зум -->
+    <div class="cam-zoom">
+      <button class="zoom-btn" id="btn-zoom-1">1×</button>
+      <button class="zoom-btn" id="btn-zoom-2">2×</button>
+    </div>
+
+    <!-- Главная кнопка съёмки -->
+    <div class="cam-shoot-row">
+      <!-- Последнее фото (превью) -->
+      <div class="cam-last-photo" id="cam-last-photo" style="opacity:0"></div>
+
+      <!-- Кнопка спуска -->
+      <button class="cam-shutter" id="btn-shoot">
+        <div class="shutter-outer">
+          <div class="shutter-inner"></div>
+        </div>
+      </button>
+
+      <!-- Таймер спуска -->
+      <button class="cam-timer-btn" id="btn-timer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="13" r="8" stroke="white" stroke-width="2"/>
+          <path d="M12 9V13L15 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M9 2H15" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 2V4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span id="timer-label">Без</span>
+      </button>
+    </div>
+
+    <p class="cam-hint-bottom">Нажмите для съёмки</p>
+  </div>
+
+  <!-- Canvas для захвата кадра (скрытый) -->
+  <canvas id="cam-capture-canvas" style="display:none"></canvas>
 </div>
 
 <!-- ========== ЭКРАН ОБРАБОТКИ ========== -->
@@ -174,305 +239,202 @@
   </div>
 
   <div class="process-content">
-    <!-- AI Визуализация -->
-    <div class="ai-visualizer">
-      <div class="ai-eye" id="ai-eye">
-        <div class="eye-outer">
-          <div class="eye-middle">
-            <div class="eye-inner">
-              <div class="eye-pupil"></div>
-            </div>
-          </div>
-        </div>
-        <div class="eye-scan-line" id="eye-scan"></div>
+
+    <div class="proc-eye-wrap">
+      <div class="proc-eye">
+        <div class="pe-ring pe-r1"></div>
+        <div class="pe-ring pe-r2"></div>
+        <div class="pe-ring pe-r3"></div>
+        <div class="pe-dot"></div>
       </div>
     </div>
 
-    <!-- Фото с обработкой -->
-    <div class="processing-image-container">
-      <div class="proc-image-wrap">
-        <img id="proc-image" src="" alt="">
-        <canvas id="proc-overlay" class="proc-overlay"></canvas>
-        <div class="proc-scan-beam" id="proc-scan-beam"></div>
-      </div>
+    <div class="proc-photo-wrap">
+      <img id="proc-image" src="" alt="">
+      <canvas id="proc-overlay"></canvas>
+      <div class="proc-beam" id="proc-beam"></div>
     </div>
 
-    <!-- Стадии AI -->
-    <div class="ai-stages">
-      <div class="ai-stage" id="astage-1">
-        <div class="as-icon">🔍</div>
-        <div class="as-info">
-          <div class="as-name">Анализ изображения</div>
-          <div class="as-bar"><div class="as-fill" id="afill-1"></div></div>
-          <div class="as-detail" id="adetail-1">Загрузка нейросети...</div>
+    <h2 class="proc-title">Создание 3D модели</h2>
+
+    <div class="proc-stages">
+
+      <div class="ps-item" id="ps-1">
+        <div class="ps-icon">🔍</div>
+        <div class="ps-body">
+          <div class="ps-name">Анализ изображения</div>
+          <div class="ps-bar"><div class="ps-fill" id="pf-1"></div></div>
+          <div class="ps-detail" id="pd-1">Ожидание...</div>
         </div>
-        <div class="as-check" id="acheck-1">○</div>
+        <div class="ps-check" id="pc-1">○</div>
       </div>
 
-      <div class="ai-stage" id="astage-2">
-        <div class="as-icon">✂️</div>
-        <div class="as-info">
-          <div class="as-name">Сегментация объекта</div>
-          <div class="as-bar"><div class="as-fill" id="afill-2"></div></div>
-          <div class="as-detail" id="adetail-2">Ожидание...</div>
+      <div class="ps-item" id="ps-2">
+        <div class="ps-icon">✂️</div>
+        <div class="ps-body">
+          <div class="ps-name">Сегментация объекта</div>
+          <div class="ps-bar"><div class="ps-fill" id="pf-2"></div></div>
+          <div class="ps-detail" id="pd-2">Ожидание...</div>
         </div>
-        <div class="as-check" id="acheck-2">○</div>
+        <div class="ps-check" id="pc-2">○</div>
       </div>
 
-      <div class="ai-stage" id="astage-3">
-        <div class="as-icon">📏</div>
-        <div class="as-info">
-          <div class="as-name">Оценка глубины (Depth AI)</div>
-          <div class="as-bar"><div class="as-fill" id="afill-3"></div></div>
-          <div class="as-detail" id="adetail-3">Ожидание...</div>
+      <div class="ps-item" id="ps-3">
+        <div class="ps-icon">📏</div>
+        <div class="ps-body">
+          <div class="ps-name">Оценка глубины</div>
+          <div class="ps-bar"><div class="ps-fill" id="pf-3"></div></div>
+          <div class="ps-detail" id="pd-3">Ожидание...</div>
         </div>
-        <div class="as-check" id="acheck-3">○</div>
+        <div class="ps-check" id="pc-3">○</div>
       </div>
 
-      <div class="ai-stage" id="astage-4">
-        <div class="as-icon">🗺️</div>
-        <div class="as-info">
-          <div class="as-name">Построение карты нормалей</div>
-          <div class="as-bar"><div class="as-fill" id="afill-4"></div></div>
-          <div class="as-detail" id="adetail-4">Ожидание...</div>
+      <div class="ps-item" id="ps-4">
+        <div class="ps-icon">🔺</div>
+        <div class="ps-body">
+          <div class="ps-name">Построение 3D сетки</div>
+          <div class="ps-bar"><div class="ps-fill" id="pf-4"></div></div>
+          <div class="ps-detail" id="pd-4">Ожидание...</div>
         </div>
-        <div class="as-check" id="acheck-4">○</div>
+        <div class="ps-check" id="pc-4">○</div>
       </div>
 
-      <div class="ai-stage" id="astage-5">
-        <div class="as-icon">🔺</div>
-        <div class="as-info">
-          <div class="as-name">Создание 3D сетки</div>
-          <div class="as-bar"><div class="as-fill" id="afill-5"></div></div>
-          <div class="as-detail" id="adetail-5">Ожидание...</div>
+      <div class="ps-item" id="ps-5">
+        <div class="ps-icon">🎨</div>
+        <div class="ps-body">
+          <div class="ps-name">Наложение текстуры</div>
+          <div class="ps-bar"><div class="ps-fill" id="pf-5"></div></div>
+          <div class="ps-detail" id="pd-5">Ожидание...</div>
         </div>
-        <div class="as-check" id="acheck-5">○</div>
+        <div class="ps-check" id="pc-5">○</div>
       </div>
 
-      <div class="ai-stage" id="astage-6">
-        <div class="as-icon">🎨</div>
-        <div class="as-info">
-          <div class="as-name">Наложение текстуры</div>
-          <div class="as-bar"><div class="as-fill" id="afill-6"></div></div>
-          <div class="as-detail" id="adetail-6">Ожидание...</div>
-        </div>
-        <div class="as-check" id="acheck-6">○</div>
-      </div>
     </div>
 
-    <!-- Главный прогресс -->
-    <div class="main-proc-progress">
-      <div class="mpp-bar">
-        <div class="mpp-fill" id="main-prog-fill"></div>
-        <div class="mpp-shine"></div>
+    <div class="proc-progress-wrap">
+      <div class="proc-prog-bar">
+        <div class="proc-prog-fill" id="main-prog-fill"></div>
       </div>
-      <div class="mpp-info">
-        <span id="main-prog-text">Инициализация AI...</span>
+      <div class="proc-prog-labels">
+        <span id="main-prog-text">Инициализация...</span>
         <span id="main-prog-pct">0%</span>
       </div>
     </div>
+
   </div>
 </div>
 
 <!-- ========== ЭКРАН РЕЗУЛЬТАТА ========== -->
 <div id="screen-result" class="screen">
 
-  <!-- Шапка -->
-  <div class="result-topbar">
-    <button class="rtb-btn" id="btn-back-result">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M12 4L6 10L12 16" stroke="white" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </button>
-    <div class="rtb-title">
-      <span class="rtb-badge">✅ 3D Готово</span>
-      <span class="rtb-sub" id="model-stats-label">—</span>
+  <div class="result-bar">
+    <button class="rbar-btn" id="btn-back-result">←</button>
+    <div class="rbar-center">
+      <span class="rbar-title">3D Готово ✅</span>
+      <span class="rbar-sub" id="model-stats-label">—</span>
     </div>
-    <button class="rtb-btn" id="btn-share">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="15" cy="4" r="2" stroke="white" stroke-width="1.5"/>
-        <circle cx="15" cy="16" r="2" stroke="white" stroke-width="1.5"/>
-        <circle cx="5" cy="10" r="2" stroke="white" stroke-width="1.5"/>
-        <path d="M13 5L7 9M13 15L7 11" stroke="white" stroke-width="1.5"/>
-      </svg>
-    </button>
+    <button class="rbar-btn" id="btn-share">↑</button>
   </div>
 
-  <!-- 3D Вьювер -->
-  <div class="viewer-wrap" id="viewer-wrap">
+  <div class="viewer-area" id="viewer-area">
     <canvas id="viewer-canvas"></canvas>
 
-    <!-- Тулбар вьювера -->
-    <div class="viewer-toolbar">
-      <button class="vt-btn active" id="vt-textured" title="Текстура">
-        <span>🎨</span><span class="vt-label">Текстура</span>
-      </button>
-      <button class="vt-btn" id="vt-solid" title="Сплошной">
-        <span>⬢</span><span class="vt-label">Материал</span>
-      </button>
-      <button class="vt-btn" id="vt-wire" title="Каркас">
-        <span>⬡</span><span class="vt-label">Каркас</span>
-      </button>
-      <button class="vt-btn" id="vt-depth" title="Глубина">
-        <span>📏</span><span class="vt-label">Глубина</span>
-      </button>
+    <div class="view-modes">
+      <button class="vm-btn active" id="vm-tex">🎨 Текстура</button>
+      <button class="vm-btn" id="vm-solid">⬢ Материал</button>
+      <button class="vm-btn" id="vm-wire">⬡ Каркас</button>
+      <button class="vm-btn" id="vm-depth">📏 Глубина</button>
     </div>
 
-    <!-- Плавающие контролы -->
-    <div class="viewer-float-controls">
-      <button class="vfc-btn" id="vfc-rotate" title="Авто-вращение">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M3 9A6 6 0 0 1 15 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M15 6V9H12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="vfc-btn" id="vfc-reset">⊙</button>
-      <button class="vfc-btn" id="vfc-zoom-in">+</button>
-      <button class="vfc-btn" id="vfc-zoom-out">−</button>
+    <div class="view-btns">
+      <button class="vb-btn" id="vb-rotate">⟳</button>
+      <button class="vb-btn" id="vb-reset">⊙</button>
+      <button class="vb-btn" id="vb-zi">+</button>
+      <button class="vb-btn" id="vb-zo">−</button>
     </div>
 
-    <!-- Инфо оверлей -->
-    <div class="viewer-info-overlay">
-      <div class="vio-item" id="vio-verts">
-        <span class="vio-val">—</span>
-        <span class="vio-label">вершин</span>
-      </div>
-      <div class="vio-item" id="vio-faces">
-        <span class="vio-val">—</span>
-        <span class="vio-label">граней</span>
-      </div>
-      <div class="vio-item" id="vio-size">
-        <span class="vio-val">—</span>
-        <span class="vio-label">px</span>
-      </div>
-    </div>
-
-    <!-- Подсказка жестов -->
-    <div class="gesture-hint" id="gesture-hint">
-      <span>👆 Вращать</span>
-      <span>🤏 Масштаб</span>
-      <span>✌️ Двигать</span>
+    <div class="view-stats">
+      <div class="vs-item"><span id="sv-v">—</span><br><small>вершин</small></div>
+      <div class="vs-item"><span id="sv-f">—</span><br><small>граней</small></div>
     </div>
   </div>
 
-  <!-- Боковая панель (на мобиле снизу) -->
-  <div class="result-sidebar">
+  <div class="result-panel">
 
-    <!-- Исходное фото и маска -->
-    <div class="source-compare">
-      <div class="compare-item">
-        <img id="result-src-photo" src="" alt="Исходное">
-        <span class="ci-label">Исходное</span>
+    <div class="rp-compare">
+      <div class="rpc-item">
+        <img id="res-src" src="" alt="">
+        <span>Фото</span>
       </div>
-      <div class="compare-item">
-        <canvas id="result-mask-canvas" width="120" height="120"></canvas>
-        <span class="ci-label">Сегментация</span>
+      <div class="rpc-item">
+        <canvas id="res-mask" width="100" height="100"></canvas>
+        <span>Маска</span>
       </div>
-      <div class="compare-item">
-        <canvas id="result-depth-canvas" width="120" height="120"></canvas>
-        <span class="ci-label">Карта глубины</span>
+      <div class="rpc-item">
+        <canvas id="res-depth" width="100" height="100"></canvas>
+        <span>Глубина</span>
       </div>
     </div>
 
-    <!-- Экспорт -->
-    <div class="export-section">
-      <h3 class="export-title">⬇ Скачать модель</h3>
+    <h3 class="rp-title">⬇ Скачать модель</h3>
 
-      <div class="export-formats">
-        <button class="ef-btn" onclick="App.export('stl')">
-          <span class="ef-icon">🔺</span>
-          <div class="ef-info">
-            <strong>STL</strong>
-            <span>3D печать</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
+    <div class="rp-formats">
 
-        <button class="ef-btn" onclick="App.export('obj')">
-          <span class="ef-icon">📦</span>
-          <div class="ef-info">
-            <strong>OBJ + MTL</strong>
-            <span>+ текстура PNG</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
-
-        <button class="ef-btn" onclick="App.export('gltf')">
-          <span class="ef-icon">🌐</span>
-          <div class="ef-info">
-            <strong>GLB / GLTF</strong>
-            <span>Web 3D + AR</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
-
-        <button class="ef-btn" onclick="App.export('ply')">
-          <span class="ef-icon">☁️</span>
-          <div class="ef-info">
-            <strong>PLY</strong>
-            <span>Облако точек</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
-
-        <button class="ef-btn gcode-btn" onclick="App.export('gcode')">
-          <span class="ef-icon">🖨️</span>
-          <div class="ef-info">
-            <strong>G-CODE</strong>
-            <span>Слайсер / ЧПУ</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
-
-        <button class="ef-btn" onclick="App.export('png-texture')">
-          <span class="ef-icon">🖼️</span>
-          <div class="ef-info">
-            <strong>PNG текстура</strong>
-            <span>Отдельно</span>
-          </div>
-          <span class="ef-arrow">↓</span>
-        </button>
-      </div>
-
-      <button class="btn-export-all" id="btn-export-all">
-        📦 Скачать всё одним архивом
+      <button class="rf-btn" onclick="App.export('stl')">
+        <span class="rf-ic">🔺</span>
+        <div><strong>STL</strong><br><small>3D печать</small></div>
+        <span class="rf-dl">↓</span>
       </button>
+
+      <button class="rf-btn" onclick="App.export('obj')">
+        <span class="rf-ic">📦</span>
+        <div><strong>OBJ</strong><br><small>+ текстура PNG</small></div>
+        <span class="rf-dl">↓</span>
+      </button>
+
+      <button class="rf-btn" onclick="App.export('gltf')">
+        <span class="rf-ic">🌐</span>
+        <div><strong>GLB</strong><br><small>Web 3D / AR</small></div>
+        <span class="rf-dl">↓</span>
+      </button>
+
+      <button class="rf-btn" onclick="App.export('ply')">
+        <span class="rf-ic">☁️</span>
+        <div><strong>PLY</strong><br><small>Облако точек</small></div>
+        <span class="rf-dl">↓</span>
+      </button>
+
+      <button class="rf-btn gcode-rf" onclick="App.export('gcode')">
+        <span class="rf-ic">🖨️</span>
+        <div><strong>G-CODE</strong><br><small>3D принтер / ЧПУ</small></div>
+        <span class="rf-dl">↓</span>
+      </button>
+
+      <button class="rf-btn" onclick="App.export('png-texture')">
+        <span class="rf-ic">🖼️</span>
+        <div><strong>Текстура</strong><br><small>PNG файл</small></div>
+        <span class="rf-dl">↓</span>
+      </button>
+
     </div>
 
-    <!-- Новое фото -->
-    <button class="btn-new" id="btn-new-photo">
-      🔄 Создать из другого фото
-    </button>
+    <button class="btn-export-all" id="btn-export-all">📦 Скачать всё</button>
+    <button class="btn-new-photo" id="btn-new-photo">🔄 Новое фото</button>
+
   </div>
 </div>
 
 <!-- G-CODE Modal -->
-<div class="modal-overlay" id="gcode-modal" style="display:none">
-  <div class="gcode-modal-inner">
-    <h3>🖨️ Параметры G-CODE</h3>
-    <div class="gm-grid">
-      <div class="gm-item">
-        <label>Высота слоя (мм)</label>
-        <input type="number" id="gc-layer" value="0.2" step="0.05" min="0.05" max="0.5">
-      </div>
-      <div class="gm-item">
-        <label>Скорость (мм/с)</label>
-        <input type="number" id="gc-speed" value="60" min="20" max="200">
-      </div>
-      <div class="gm-item">
-        <label>Температура сопла</label>
-        <input type="number" id="gc-nozzle" value="210" min="150" max="300">
-      </div>
-      <div class="gm-item">
-        <label>Температура стола</label>
-        <input type="number" id="gc-bed" value="60" min="0" max="120">
-      </div>
-      <div class="gm-item">
-        <label>Заполнение (%)</label>
-        <input type="number" id="gc-infill" value="20" min="5" max="100">
-      </div>
-      <div class="gm-item">
-        <label>Диаметр сопла</label>
+<div class="modal-bg" id="gcode-modal" style="display:none">
+  <div class="modal-box">
+    <h3>🖨️ Настройки G-CODE</h3>
+    <div class="modal-grid">
+      <div class="mg-item"><label>Высота слоя (мм)</label><input type="number" id="gc-layer" value="0.2" step="0.05" min="0.05" max="0.5"></div>
+      <div class="mg-item"><label>Скорость (мм/с)</label><input type="number" id="gc-speed" value="60" min="20" max="200"></div>
+      <div class="mg-item"><label>Температура сопла</label><input type="number" id="gc-nozzle" value="210" min="150" max="300"></div>
+      <div class="mg-item"><label>Температура стола</label><input type="number" id="gc-bed" value="60" min="0" max="120"></div>
+      <div class="mg-item"><label>Заполнение (%)</label><input type="number" id="gc-infill" value="20" min="5" max="100"></div>
+      <div class="mg-item"><label>Диаметр сопла</label>
         <select id="gc-nozzle-size">
           <option value="0.2">0.2 мм</option>
           <option value="0.4" selected>0.4 мм</option>
@@ -480,9 +442,9 @@
         </select>
       </div>
     </div>
-    <div class="gm-buttons">
-      <button class="btn-gm-cancel" id="gm-cancel">Отмена</button>
-      <button class="btn-gm-ok" id="gm-ok">Создать G-CODE</button>
+    <div class="modal-btns">
+      <button class="mb-cancel" id="gm-cancel">Отмена</button>
+      <button class="mb-ok" id="gm-ok">Создать</button>
     </div>
   </div>
 </div>
@@ -490,7 +452,6 @@
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- Scripts -->
 <script src="js/segmentation.js"></script>
 <script src="js/depthEstimator.js"></script>
 <script src="js/meshBuilder.js"></script>
@@ -499,4 +460,4 @@
 <script src="js/exporter.js"></script>
 <script src="js/app.js"></script>
 </body>
-  </html>
+          </html>
