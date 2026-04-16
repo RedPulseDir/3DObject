@@ -1,520 +1,502 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>3D Scanner Pro</title>
-  <link rel="stylesheet" href="css/style.css">
-  
-  <!-- Three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <!-- OrbitControls -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <!-- STL Exporter -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
-  <!-- OBJ Exporter -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
-  <!-- PLY Exporter -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/PLYExporter.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AI 3D Object Creator</title>
+<link rel="stylesheet" href="css/style.css">
+
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<!-- BodyPix / Universal Segmentation -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/STLExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/OBJExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/exporters/GLTFExporter.js"></script>
 </head>
 <body>
 
-<!-- ===== ЭКРАН 1: ПРИВЕТСТВИЕ ===== -->
-<div id="screen-welcome" class="screen active">
-  <div class="welcome-container">
-    <div class="logo-3d">
-      <div class="cube">
-        <div class="face front"></div>
-        <div class="face back"></div>
-        <div class="face left"></div>
-        <div class="face right"></div>
-        <div class="face top"></div>
-        <div class="face bottom"></div>
-      </div>
-    </div>
-    <h1>3D Scanner Pro</h1>
-    <p class="subtitle">Превратите любой объект в 3D модель прямо с вашего устройства</p>
-    
-    <div class="features">
-      <div class="feature">
-        <span class="feature-icon">📷</span>
-        <span>Сканирование камерой</span>
-      </div>
-      <div class="feature">
-        <span class="feature-icon">🔄</span>
-        <span>Обход вокруг объекта</span>
-      </div>
-      <div class="feature">
-        <span class="feature-icon">🎯</span>
-        <span>AI обработка</span>
-      </div>
-      <div class="feature">
-        <span class="feature-icon">💾</span>
-        <span>Экспорт STL/OBJ/GCODE</span>
-      </div>
-    </div>
-
-    <button class="btn-primary" id="btn-start">
-      <span class="btn-icon">🚀</span>
-      Начать сканирование
-    </button>
-    
-    <p class="hint">Потребуется доступ к камере</p>
-  </div>
-</div>
-
-<!-- ===== ЭКРАН 2: СКАНИРОВАНИЕ ===== -->
-<div id="screen-scan" class="screen">
-  
-  <!-- Шапка -->
-  <div class="scan-header">
-    <button class="btn-back" id="btn-back-scan">←</button>
-    <div class="scan-title">
-      <h2>Сканирование</h2>
-      <span id="scan-phase-label">Выберите объект</span>
-    </div>
-    <div class="frame-counter">
-      <span id="frame-count">0</span>/<span id="frame-total">36</span>
-    </div>
+<!-- ========== ЭКРАН ЗАГРУЗКИ ========== -->
+<div id="screen-upload" class="screen active">
+  <div class="upload-bg">
+    <div class="bg-orb orb1"></div>
+    <div class="bg-orb orb2"></div>
+    <div class="bg-orb orb3"></div>
   </div>
 
-  <!-- Область камеры -->
-  <div class="camera-container">
-    <video id="camera-video" autoplay playsinline muted></video>
-    <canvas id="camera-canvas"></canvas>
-    
-    <!-- Рамка сканера -->
-    <div class="scan-frame" id="scan-frame">
-      <div class="frame-corner top-left"></div>
-      <div class="frame-corner top-right"></div>
-      <div class="frame-corner bottom-left"></div>
-      <div class="frame-corner bottom-right"></div>
-      <div class="frame-label">Поместите объект в рамку</div>
-      
-      <!-- Лазерная линия анализа -->
-      <div class="laser-line" id="laser-line"></div>
-      
-      <!-- Точки трекинга -->
-      <div class="tracking-points" id="tracking-points"></div>
-    </div>
-
-    <!-- Оверлей выделения пальцем -->
-    <canvas id="selection-canvas"></canvas>
-    
-    <!-- Статус детектирования -->
-    <div class="detection-status" id="detection-status">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Инициализация...</span>
-    </div>
-
-    <!-- Индикатор движения -->
-    <div class="motion-indicator" id="motion-indicator">
-      <div class="motion-ring"></div>
-      <div class="motion-ring"></div>
-      <div class="motion-ring"></div>
-    </div>
-  </div>
-
-  <!-- Прогресс кругового обхода -->
-  <div class="orbit-progress-container" id="orbit-progress-container" style="display:none">
-    <div class="orbit-label">Обход вокруг объекта</div>
-    <div class="orbit-ring-container">
-      <svg class="orbit-svg" viewBox="0 0 120 120">
-        <circle class="orbit-bg" cx="60" cy="60" r="50"/>
-        <circle class="orbit-fill" id="orbit-fill" cx="60" cy="60" r="50"
-                stroke-dasharray="314" stroke-dashoffset="314"/>
-        <text x="60" y="55" class="orbit-percent" id="orbit-percent">0°</text>
-        <text x="60" y="72" class="orbit-sub">из 360°</text>
-      </svg>
-      <div class="orbit-arrow" id="orbit-arrow">→</div>
-    </div>
-    <div class="orbit-frames">
-      <div class="frame-dots" id="frame-dots"></div>
-    </div>
-  </div>
-
-  <!-- Панель управления -->
-  <div class="scan-controls">
-    
-    <!-- Фаза 1: Выбор объекта -->
-    <div class="control-phase" id="phase-select">
-      <div class="instruction-card">
-        <div class="instruction-icon">👆</div>
-        <div class="instruction-text">
-          <strong>Выделите объект</strong>
-          <p>Нарисуйте пальцем вокруг объекта или нажмите "Авто-обнаружение"</p>
-        </div>
-      </div>
-      <div class="control-buttons">
-        <button class="btn-secondary" id="btn-auto-detect">
-          🎯 Авто-обнаружение
-        </button>
-        <button class="btn-secondary" id="btn-clear-selection">
-          ✕ Очистить
-        </button>
-      </div>
-      <button class="btn-primary btn-full" id="btn-confirm-selection" disabled>
-        ✓ Подтвердить объект
-      </button>
-    </div>
-
-    <!-- Фаза 2: Сканирование -->
-    <div class="control-phase" id="phase-scan" style="display:none">
-      <div class="instruction-card">
-        <div class="instruction-icon">🔄</div>
-        <div class="instruction-text">
-          <strong>Обходите вокруг объекта</strong>
-          <p>Медленно двигайтесь по кругу, держа объект в рамке</p>
-        </div>
-      </div>
-      
-      <div class="scan-stats">
-        <div class="stat">
-          <span class="stat-value" id="stat-frames">0</span>
-          <span class="stat-label">Кадров</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="stat-quality">--</span>
-          <span class="stat-label">Качество</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="stat-coverage">0%</span>
-          <span class="stat-label">Покрытие</span>
-        </div>
-      </div>
-
-      <div class="capture-row">
-        <button class="btn-capture" id="btn-capture" title="Захватить кадр">
-          <div class="capture-inner"></div>
-        </button>
-        <div class="capture-info">
-          <span>Авто-захват активен</span>
-          <label class="toggle">
-            <input type="checkbox" id="auto-capture" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <button class="btn-primary btn-full" id="btn-finish-scan" disabled>
-        ✓ Завершить сканирование
-      </button>
-    </div>
-
-  </div>
-</div>
-
-<!-- ===== ЭКРАН 3: ОБРАБОТКА ===== -->
-<div id="screen-process" class="screen">
-  <div class="process-container">
-    
-    <div class="process-header">
-      <h2>Обработка данных</h2>
-      <p>Создание 3D модели из <span id="process-frame-count">0</span> кадров</p>
-    </div>
-
-    <!-- Главный прогресс -->
-    <div class="main-progress">
-      <div class="progress-circle-container">
-        <svg class="progress-svg" viewBox="0 0 200 200">
+  <div class="upload-container">
+    <div class="app-logo">
+      <div class="logo-ring">
+        <svg viewBox="0 0 100 100" class="logo-svg">
           <defs>
-            <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#00f5ff"/>
-              <stop offset="100%" style="stop-color:#7b2ff7"/>
+            <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00f5ff"/>
+              <stop offset="100%" stop-color="#7b2ff7"/>
             </linearGradient>
           </defs>
-          <circle class="progress-bg-circle" cx="100" cy="100" r="85"/>
-          <circle class="progress-fill-circle" id="progress-circle" cx="100" cy="100" r="85"
-                  stroke-dasharray="534" stroke-dashoffset="534"/>
-          <text x="100" y="95" class="progress-percent-text" id="progress-percent">0%</text>
-          <text x="100" y="120" class="progress-stage-text" id="progress-stage">Начало...</text>
+          <polygon points="50,10 90,80 10,80" fill="none" stroke="url(#lg1)" stroke-width="4"/>
+          <polygon points="50,25 78,72 22,72" fill="rgba(0,245,255,0.1)" stroke="url(#lg1)" stroke-width="2"/>
+          <circle cx="50" cy="50" r="8" fill="url(#lg1)"/>
         </svg>
       </div>
     </div>
 
-    <!-- Этапы обработки -->
-    <div class="process-stages">
-      <div class="stage" id="stage-1">
-        <div class="stage-icon">📸</div>
-        <div class="stage-info">
-          <div class="stage-name">Анализ кадров</div>
-          <div class="stage-progress">
-            <div class="stage-bar"><div class="stage-fill" id="stage-1-fill"></div></div>
+    <h1 class="app-title">AI <span class="grad">3D</span> Creator</h1>
+    <p class="app-sub">Загрузи фото — получи реальную 3D модель с текстурой</p>
+
+    <!-- Зона загрузки -->
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <div class="upload-zone-inner" id="upload-trigger">
+        <div class="upload-icon-anim">
+          <div class="upload-circle">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <path d="M24 8L24 32" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
+              <path d="M14 18L24 8L34 18" stroke="#00f5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 36H40" stroke="#00f5ff" stroke-width="3" stroke-linecap="round"/>
+            </svg>
           </div>
+          <div class="upload-pulse"></div>
         </div>
-        <div class="stage-status" id="stage-1-status">⏳</div>
-      </div>
-      
-      <div class="stage" id="stage-2">
-        <div class="stage-icon">🔍</div>
-        <div class="stage-info">
-          <div class="stage-name">Извлечение ключевых точек</div>
-          <div class="stage-progress">
-            <div class="stage-bar"><div class="stage-fill" id="stage-2-fill"></div></div>
-          </div>
-        </div>
-        <div class="stage-status" id="stage-2-status">⏳</div>
-      </div>
-      
-      <div class="stage" id="stage-3">
-        <div class="stage-icon">🗺️</div>
-        <div class="stage-info">
-          <div class="stage-name">Построение облака точек</div>
-          <div class="stage-progress">
-            <div class="stage-bar"><div class="stage-fill" id="stage-3-fill"></div></div>
-          </div>
-        </div>
-        <div class="stage-status" id="stage-3-status">⏳</div>
-      </div>
-      
-      <div class="stage" id="stage-4">
-        <div class="stage-icon">🔺</div>
-        <div class="stage-info">
-          <div class="stage-name">Создание полигональной сетки</div>
-          <div class="stage-progress">
-            <div class="stage-bar"><div class="stage-fill" id="stage-4-fill"></div></div>
-          </div>
-        </div>
-        <div class="stage-status" id="stage-4-status">⏳</div>
-      </div>
-      
-      <div class="stage" id="stage-5">
-        <div class="stage-icon">✨</div>
-        <div class="stage-info">
-          <div class="stage-name">Оптимизация и сглаживание</div>
-          <div class="stage-progress">
-            <div class="stage-bar"><div class="stage-fill" id="stage-5-fill"></div></div>
-          </div>
-        </div>
-        <div class="stage-status" id="stage-5-status">⏳</div>
+        <p class="upload-text">Нажмите или перетащите фото</p>
+        <p class="upload-hint">JPG, PNG, WEBP до 20МБ</p>
       </div>
     </div>
 
-    <!-- Лог обработки -->
-    <div class="process-log" id="process-log">
-      <div class="log-entry">🚀 Начало обработки...</div>
+    <!-- Превью фото -->
+    <div class="photo-preview-container" id="photo-preview-container" style="display:none">
+      <div class="photo-preview-wrap">
+        <img id="photo-preview" src="" alt="Preview">
+        <div class="photo-overlay-info" id="photo-info"></div>
+        <button class="btn-change-photo" id="btn-change-photo">✕ Другое фото</button>
+      </div>
     </div>
 
-    <button class="btn-secondary btn-full" id="btn-cancel-process">
-      Отмена
+    <!-- Настройки AI -->
+    <div class="ai-settings" id="ai-settings" style="display:none">
+      <h3 class="settings-title">⚙️ Настройки AI</h3>
+      <div class="settings-row">
+        <div class="setting-card" id="quality-setting">
+          <span class="sc-icon">🎯</span>
+          <div class="sc-content">
+            <span class="sc-name">Качество</span>
+            <select id="quality-select" class="sc-select">
+              <option value="fast">Быстрое (30с)</option>
+              <option value="medium" selected>Среднее (1мин)</option>
+              <option value="high">Высокое (2мин)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <span class="sc-icon">📐</span>
+          <div class="sc-content">
+            <span class="sc-name">Тип объекта</span>
+            <select id="object-type" class="sc-select">
+              <option value="auto">Авто-определение</option>
+              <option value="organic">Органика (люди, животные)</option>
+              <option value="product">Продукт/предмет</option>
+              <option value="face">Лицо/голова</option>
+              <option value="architecture">Архитектура</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <span class="sc-icon">🎨</span>
+          <div class="sc-content">
+            <span class="sc-name">Текстура</span>
+            <select id="texture-mode" class="sc-select">
+              <option value="photo">С фото (реальные цвета)</option>
+              <option value="enhanced">Улучшенная</option>
+              <option value="smooth">Сглаженная</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <span class="sc-icon">🔺</span>
+          <div class="sc-content">
+            <span class="sc-name">Детализация</span>
+            <input type="range" id="detail-level" min="1" max="5" value="3" class="sc-slider">
+            <span class="slider-val" id="detail-val">3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Дополнительные опции -->
+      <div class="extra-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="opt-smooth" checked>
+          <span class="cb-box"></span>
+          Сглаживание поверхности
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="opt-close-bottom" checked>
+          <span class="cb-box"></span>
+          Закрыть основание
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="opt-remove-bg" checked>
+          <span class="cb-box"></span>
+          Убрать фон автоматически
+        </label>
+      </div>
+    </div>
+
+    <!-- Кнопка создать -->
+    <button class="btn-create" id="btn-create" style="display:none">
+      <span class="btn-create-icon">✨</span>
+      <span>Создать 3D модель</span>
+      <span class="btn-create-arrow">→</span>
     </button>
+
+    <!-- Примеры -->
+    <div class="examples-section">
+      <p class="examples-label">Попробуйте с примером:</p>
+      <div class="examples-row">
+        <button class="example-btn" data-example="cup">☕ Чашка</button>
+        <button class="example-btn" data-example="bottle">🍾 Бутылка</button>
+        <button class="example-btn" data-example="toy">🧸 Игрушка</button>
+        <button class="example-btn" data-example="shoe">👟 Кроссовок</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ===== ЭКРАН 4: РЕЗУЛЬТАТ ===== -->
+<!-- ========== ЭКРАН ОБРАБОТКИ ========== -->
+<div id="screen-process" class="screen">
+  <div class="process-bg">
+    <canvas id="neural-canvas"></canvas>
+  </div>
+
+  <div class="process-content">
+    <!-- AI Визуализация -->
+    <div class="ai-visualizer">
+      <div class="ai-eye" id="ai-eye">
+        <div class="eye-outer">
+          <div class="eye-middle">
+            <div class="eye-inner">
+              <div class="eye-pupil"></div>
+            </div>
+          </div>
+        </div>
+        <div class="eye-scan-line" id="eye-scan"></div>
+      </div>
+    </div>
+
+    <!-- Фото с обработкой -->
+    <div class="processing-image-container">
+      <div class="proc-image-wrap">
+        <img id="proc-image" src="" alt="">
+        <canvas id="proc-overlay" class="proc-overlay"></canvas>
+        <div class="proc-scan-beam" id="proc-scan-beam"></div>
+      </div>
+    </div>
+
+    <!-- Стадии AI -->
+    <div class="ai-stages">
+      <div class="ai-stage" id="astage-1">
+        <div class="as-icon">🔍</div>
+        <div class="as-info">
+          <div class="as-name">Анализ изображения</div>
+          <div class="as-bar"><div class="as-fill" id="afill-1"></div></div>
+          <div class="as-detail" id="adetail-1">Загрузка нейросети...</div>
+        </div>
+        <div class="as-check" id="acheck-1">○</div>
+      </div>
+
+      <div class="ai-stage" id="astage-2">
+        <div class="as-icon">✂️</div>
+        <div class="as-info">
+          <div class="as-name">Сегментация объекта</div>
+          <div class="as-bar"><div class="as-fill" id="afill-2"></div></div>
+          <div class="as-detail" id="adetail-2">Ожидание...</div>
+        </div>
+        <div class="as-check" id="acheck-2">○</div>
+      </div>
+
+      <div class="ai-stage" id="astage-3">
+        <div class="as-icon">📏</div>
+        <div class="as-info">
+          <div class="as-name">Оценка глубины (Depth AI)</div>
+          <div class="as-bar"><div class="as-fill" id="afill-3"></div></div>
+          <div class="as-detail" id="adetail-3">Ожидание...</div>
+        </div>
+        <div class="as-check" id="acheck-3">○</div>
+      </div>
+
+      <div class="ai-stage" id="astage-4">
+        <div class="as-icon">🗺️</div>
+        <div class="as-info">
+          <div class="as-name">Построение карты нормалей</div>
+          <div class="as-bar"><div class="as-fill" id="afill-4"></div></div>
+          <div class="as-detail" id="adetail-4">Ожидание...</div>
+        </div>
+        <div class="as-check" id="acheck-4">○</div>
+      </div>
+
+      <div class="ai-stage" id="astage-5">
+        <div class="as-icon">🔺</div>
+        <div class="as-info">
+          <div class="as-name">Создание 3D сетки</div>
+          <div class="as-bar"><div class="as-fill" id="afill-5"></div></div>
+          <div class="as-detail" id="adetail-5">Ожидание...</div>
+        </div>
+        <div class="as-check" id="acheck-5">○</div>
+      </div>
+
+      <div class="ai-stage" id="astage-6">
+        <div class="as-icon">🎨</div>
+        <div class="as-info">
+          <div class="as-name">Наложение текстуры</div>
+          <div class="as-bar"><div class="as-fill" id="afill-6"></div></div>
+          <div class="as-detail" id="adetail-6">Ожидание...</div>
+        </div>
+        <div class="as-check" id="acheck-6">○</div>
+      </div>
+    </div>
+
+    <!-- Главный прогресс -->
+    <div class="main-proc-progress">
+      <div class="mpp-bar">
+        <div class="mpp-fill" id="main-prog-fill"></div>
+        <div class="mpp-shine"></div>
+      </div>
+      <div class="mpp-info">
+        <span id="main-prog-text">Инициализация AI...</span>
+        <span id="main-prog-pct">0%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ЭКРАН РЕЗУЛЬТАТА ========== -->
 <div id="screen-result" class="screen">
-  
+
   <!-- Шапка -->
-  <div class="result-header">
-    <button class="btn-back" id="btn-back-result">←</button>
-    <h2>3D Модель готова!</h2>
-    <button class="btn-icon-btn" id="btn-result-settings">⚙️</button>
+  <div class="result-topbar">
+    <button class="rtb-btn" id="btn-back-result">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M12 4L6 10L12 16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="rtb-title">
+      <span class="rtb-badge">✅ 3D Готово</span>
+      <span class="rtb-sub" id="model-stats-label">—</span>
+    </div>
+    <button class="rtb-btn" id="btn-share">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="15" cy="4" r="2" stroke="white" stroke-width="1.5"/>
+        <circle cx="15" cy="16" r="2" stroke="white" stroke-width="1.5"/>
+        <circle cx="5" cy="10" r="2" stroke="white" stroke-width="1.5"/>
+        <path d="M13 5L7 9M13 15L7 11" stroke="white" stroke-width="1.5"/>
+      </svg>
+    </button>
   </div>
 
   <!-- 3D Вьювер -->
-  <div class="viewer-container" id="viewer-container">
-    <canvas id="three-canvas"></canvas>
-    
-    <!-- Контролы вьювера -->
-    <div class="viewer-controls">
-      <button class="viewer-btn" id="btn-rotate-auto" title="Авто-вращение">⟳</button>
-      <button class="viewer-btn" id="btn-wireframe" title="Каркас">⬡</button>
-      <button class="viewer-btn" id="btn-solid" title="Сплошной">⬢</button>
-      <button class="viewer-btn" id="btn-reset-view" title="Сбросить вид">⊙</button>
+  <div class="viewer-wrap" id="viewer-wrap">
+    <canvas id="viewer-canvas"></canvas>
+
+    <!-- Тулбар вьювера -->
+    <div class="viewer-toolbar">
+      <button class="vt-btn active" id="vt-textured" title="Текстура">
+        <span>🎨</span><span class="vt-label">Текстура</span>
+      </button>
+      <button class="vt-btn" id="vt-solid" title="Сплошной">
+        <span>⬢</span><span class="vt-label">Материал</span>
+      </button>
+      <button class="vt-btn" id="vt-wire" title="Каркас">
+        <span>⬡</span><span class="vt-label">Каркас</span>
+      </button>
+      <button class="vt-btn" id="vt-depth" title="Глубина">
+        <span>📏</span><span class="vt-label">Глубина</span>
+      </button>
     </div>
 
-    <!-- Инфо о модели -->
-    <div class="model-info-overlay">
-      <div class="model-stat">
-        <span id="info-vertices">0</span>
-        <span>вершин</span>
+    <!-- Плавающие контролы -->
+    <div class="viewer-float-controls">
+      <button class="vfc-btn" id="vfc-rotate" title="Авто-вращение">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M3 9A6 6 0 0 1 15 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M15 6V9H12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="vfc-btn" id="vfc-reset">⊙</button>
+      <button class="vfc-btn" id="vfc-zoom-in">+</button>
+      <button class="vfc-btn" id="vfc-zoom-out">−</button>
+    </div>
+
+    <!-- Инфо оверлей -->
+    <div class="viewer-info-overlay">
+      <div class="vio-item" id="vio-verts">
+        <span class="vio-val">—</span>
+        <span class="vio-label">вершин</span>
       </div>
-      <div class="model-stat">
-        <span id="info-faces">0</span>
-        <span>граней</span>
+      <div class="vio-item" id="vio-faces">
+        <span class="vio-val">—</span>
+        <span class="vio-label">граней</span>
+      </div>
+      <div class="vio-item" id="vio-size">
+        <span class="vio-val">—</span>
+        <span class="vio-label">px</span>
       </div>
     </div>
 
-    <!-- Подсказка управления -->
-    <div class="viewer-hint">
+    <!-- Подсказка жестов -->
+    <div class="gesture-hint" id="gesture-hint">
       <span>👆 Вращать</span>
       <span>🤏 Масштаб</span>
-      <span>✌️ Перемещение</span>
+      <span>✌️ Двигать</span>
     </div>
   </div>
 
-  <!-- Панель экспорта -->
-  <div class="export-panel">
-    <h3>Скачать модель</h3>
-    
-    <div class="export-grid">
-      
-      <div class="export-card" data-format="stl">
-        <div class="export-icon">🔺</div>
-        <div class="export-info">
-          <strong>STL</strong>
-          <span>3D печать</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('stl')">↓</button>
-      </div>
+  <!-- Боковая панель (на мобиле снизу) -->
+  <div class="result-sidebar">
 
-      <div class="export-card" data-format="obj">
-        <div class="export-icon">📦</div>
-        <div class="export-info">
-          <strong>OBJ</strong>
-          <span>Универсальный</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('obj')">↓</button>
+    <!-- Исходное фото и маска -->
+    <div class="source-compare">
+      <div class="compare-item">
+        <img id="result-src-photo" src="" alt="Исходное">
+        <span class="ci-label">Исходное</span>
       </div>
-
-      <div class="export-card" data-format="ply">
-        <div class="export-icon">☁️</div>
-        <div class="export-info">
-          <strong>PLY</strong>
-          <span>Облако точек</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('ply')">↓</button>
+      <div class="compare-item">
+        <canvas id="result-mask-canvas" width="120" height="120"></canvas>
+        <span class="ci-label">Сегментация</span>
       </div>
-
-      <div class="export-card" data-format="gcode">
-        <div class="export-icon">🖨️</div>
-        <div class="export-info">
-          <strong>G-CODE</strong>
-          <span>CNC/3D принтер</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('gcode')">↓</button>
+      <div class="compare-item">
+        <canvas id="result-depth-canvas" width="120" height="120"></canvas>
+        <span class="ci-label">Карта глубины</span>
       </div>
-
-      <div class="export-card" data-format="glb">
-        <div class="export-icon">🌐</div>
-        <div class="export-info">
-          <strong>GLB</strong>
-          <span>Web 3D</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('glb')">↓</button>
-      </div>
-
-      <div class="export-card" data-format="dae">
-        <div class="export-icon">🎨</div>
-        <div class="export-info">
-          <strong>DAE</strong>
-          <span>Collada</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('dae')">↓</button>
-      </div>
-
-      <div class="export-card" data-format="3mf">
-        <div class="export-icon">📐</div>
-        <div class="export-info">
-          <strong>3MF</strong>
-          <span>3D Manufacturing</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('3mf')">↓</button>
-      </div>
-
-      <div class="export-card" data-format="fbx">
-        <div class="export-icon">🎭</div>
-        <div class="export-info">
-          <strong>FBX</strong>
-          <span>Анимация</span>
-        </div>
-        <button class="btn-download" onclick="exportModel('fbx')">↓</button>
-      </div>
-
     </div>
 
-    <!-- Кнопка скачать всё -->
-    <button class="btn-primary btn-full" id="btn-download-all">
-      📦 Скачать все форматы (ZIP)
-    </button>
+    <!-- Экспорт -->
+    <div class="export-section">
+      <h3 class="export-title">⬇ Скачать модель</h3>
 
-    <button class="btn-secondary btn-full" id="btn-new-scan">
-      🔄 Новое сканирование
+      <div class="export-formats">
+        <button class="ef-btn" onclick="App.export('stl')">
+          <span class="ef-icon">🔺</span>
+          <div class="ef-info">
+            <strong>STL</strong>
+            <span>3D печать</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+
+        <button class="ef-btn" onclick="App.export('obj')">
+          <span class="ef-icon">📦</span>
+          <div class="ef-info">
+            <strong>OBJ + MTL</strong>
+            <span>+ текстура PNG</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+
+        <button class="ef-btn" onclick="App.export('gltf')">
+          <span class="ef-icon">🌐</span>
+          <div class="ef-info">
+            <strong>GLB / GLTF</strong>
+            <span>Web 3D + AR</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+
+        <button class="ef-btn" onclick="App.export('ply')">
+          <span class="ef-icon">☁️</span>
+          <div class="ef-info">
+            <strong>PLY</strong>
+            <span>Облако точек</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+
+        <button class="ef-btn gcode-btn" onclick="App.export('gcode')">
+          <span class="ef-icon">🖨️</span>
+          <div class="ef-info">
+            <strong>G-CODE</strong>
+            <span>Слайсер / ЧПУ</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+
+        <button class="ef-btn" onclick="App.export('png-texture')">
+          <span class="ef-icon">🖼️</span>
+          <div class="ef-info">
+            <strong>PNG текстура</strong>
+            <span>Отдельно</span>
+          </div>
+          <span class="ef-arrow">↓</span>
+        </button>
+      </div>
+
+      <button class="btn-export-all" id="btn-export-all">
+        📦 Скачать всё одним архивом
+      </button>
+    </div>
+
+    <!-- Новое фото -->
+    <button class="btn-new" id="btn-new-photo">
+      🔄 Создать из другого фото
     </button>
   </div>
 </div>
 
-<!-- ===== МОДАЛЬНЫЕ ОКНА ===== -->
-
-<!-- Уведомление -->
-<div class="modal-overlay" id="modal-overlay" style="display:none">
-  <div class="modal" id="modal">
-    <div class="modal-icon" id="modal-icon">⚠️</div>
-    <h3 id="modal-title">Заголовок</h3>
-    <p id="modal-message">Сообщение</p>
-    <div class="modal-buttons">
-      <button class="btn-secondary" id="modal-cancel" style="display:none">Отмена</button>
-      <button class="btn-primary" id="modal-confirm">OK</button>
-    </div>
-  </div>
-</div>
-
-<!-- Тост -->
-<div class="toast" id="toast"></div>
-
-<!-- G-CODE настройки -->
+<!-- G-CODE Modal -->
 <div class="modal-overlay" id="gcode-modal" style="display:none">
-  <div class="modal gcode-settings">
-    <h3>⚙️ Настройки G-CODE</h3>
-    <div class="settings-grid">
-      <div class="setting-item">
-        <label>Тип принтера</label>
-        <select id="printer-type">
-          <option value="fdm">FDM (Filament)</option>
-          <option value="resin">Resin/SLA</option>
-          <option value="cnc">CNC фрезер</option>
-        </select>
-      </div>
-      <div class="setting-item">
+  <div class="gcode-modal-inner">
+    <h3>🖨️ Параметры G-CODE</h3>
+    <div class="gm-grid">
+      <div class="gm-item">
         <label>Высота слоя (мм)</label>
-        <input type="number" id="layer-height" value="0.2" step="0.05" min="0.05" max="0.5">
+        <input type="number" id="gc-layer" value="0.2" step="0.05" min="0.05" max="0.5">
       </div>
-      <div class="setting-item">
-        <label>Скорость печати (мм/с)</label>
-        <input type="number" id="print-speed" value="60" step="5" min="20" max="200">
+      <div class="gm-item">
+        <label>Скорость (мм/с)</label>
+        <input type="number" id="gc-speed" value="60" min="20" max="200">
       </div>
-      <div class="setting-item">
-        <label>Температура сопла (°C)</label>
-        <input type="number" id="nozzle-temp" value="210" step="5" min="150" max="300">
+      <div class="gm-item">
+        <label>Температура сопла</label>
+        <input type="number" id="gc-nozzle" value="210" min="150" max="300">
       </div>
-      <div class="setting-item">
-        <label>Температура стола (°C)</label>
-        <input type="number" id="bed-temp" value="60" step="5" min="0" max="120">
+      <div class="gm-item">
+        <label>Температура стола</label>
+        <input type="number" id="gc-bed" value="60" min="0" max="120">
       </div>
-      <div class="setting-item">
+      <div class="gm-item">
         <label>Заполнение (%)</label>
-        <input type="number" id="infill" value="20" step="5" min="5" max="100">
+        <input type="number" id="gc-infill" value="20" min="5" max="100">
       </div>
-      <div class="setting-item">
-        <label>Диаметр сопла (мм)</label>
-        <select id="nozzle-size">
+      <div class="gm-item">
+        <label>Диаметр сопла</label>
+        <select id="gc-nozzle-size">
           <option value="0.2">0.2 мм</option>
           <option value="0.4" selected>0.4 мм</option>
           <option value="0.6">0.6 мм</option>
-          <option value="0.8">0.8 мм</option>
-        </select>
-      </div>
-      <div class="setting-item">
-        <label>Поддержки</label>
-        <select id="supports">
-          <option value="none">Нет</option>
-          <option value="auto" selected>Авто</option>
-          <option value="all">Везде</option>
         </select>
       </div>
     </div>
-    <div class="modal-buttons">
-      <button class="btn-secondary" id="gcode-cancel">Отмена</button>
-      <button class="btn-primary" id="gcode-confirm">Генерировать G-CODE</button>
+    <div class="gm-buttons">
+      <button class="btn-gm-cancel" id="gm-cancel">Отмена</button>
+      <button class="btn-gm-ok" id="gm-ok">Создать G-CODE</button>
     </div>
   </div>
 </div>
 
-<script src="js/camera.js"></script>
-<script src="js/scanner.js"></script>
-<script src="js/processor.js"></script>
-<script src="js/model3d.js"></script>
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Scripts -->
+<script src="js/segmentation.js"></script>
+<script src="js/depthEstimator.js"></script>
+<script src="js/meshBuilder.js"></script>
+<script src="js/textureMapper.js"></script>
+<script src="js/viewer3d.js"></script>
 <script src="js/exporter.js"></script>
 <script src="js/app.js"></script>
 </body>
-</html>
+  </html>
